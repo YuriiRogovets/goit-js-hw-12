@@ -40,7 +40,12 @@ async function handleSerch(event) {
     
     if (!queryParams.query) {
     loaderEl.style.display = "none"; 
-    return;
+    return iziToast.error({
+                    message: "Enter a query value, please",
+                    position: "topRight",
+                    backgroundColor: "green",
+                    icon: "none",
+                });
     }
 
     try {
@@ -56,13 +61,24 @@ async function handleSerch(event) {
                 
                 
         } else {
-            createMarkup(resp.data.hits);
+            createMarkup(resp.data.hits); // розмітка
             
-            loadMoreBtn.classList.remove("is-hidden"); //показуємо кнопку loadMore
+            queryParams.maxPage = Math.ceil(resp.data.totalHits / queryParams.pageSize);      
+           // рахуємо і записуємо в обʼєкт максимальну кількість сторінок в нашому запиті
+        }    
+        
+        
+        if (queryParams.page === queryParams.maxPage) {
 
-            queryParams.maxPage = Math.ceil(resp.data.total / queryParams.pageSize);      
-           // рахуємо і записуємо в обʼєкт максимальну кількість сторінок в нашому запиті,
-        }        
+            messageFinishGallery.classList.remove("is-hidden"); // виводимо повідовлення про кінець галереї
+
+             loadMoreBtn.classList.add("is-hidden"); // ховаємо кнопку loadMore
+        } else {
+
+            loadMoreBtn.classList.remove("is-hidden"); //показуємо кнопку loadMore
+        }
+
+        form.reset(); // скидуємо поля форми
 
     } catch (err) {
         iziToast.error({
@@ -73,21 +89,13 @@ async function handleSerch(event) {
                 });
     } finally {
         
-        if (queryParams.page === queryParams.maxPage) {
-
-            messageFinishGallery.classList.remove("is-hidden"); // виводимо повідовлення про кінець галереї
-
-             loadMoreBtn.classList.add("is-hidden"); // ховаємо кнопку loadMore
-        } 
-
-        form.reset(); // скидуємо поля форми
         loaderEl.style.display = "none";
         
     }
-    console.log(queryParams.page);
+   
 }
 
-async function fetchImages(query) {
+ function fetchImages(query) {
 
     const BASE_URL = "https://pixabay.com/api";
     const API_KEY = "41900218-778e908913d1efd90b8f97d56"
@@ -111,12 +119,27 @@ async function handleLoadMore(event) {
     queryParams.page += 1; // збільшуємо номер сторінки
     // перед початком запиту - показуємо лоадер і ховаємо кнопку
     loaderEl.style.display = "block"
-    loadMoreBtn.classList.add("is-hidden"); //можна або ховати або морозити (loadMoreBtn.disabled = true;)
+    loadMoreBtn.classList.add("is-hidden"); 
 
     try {
         const respNext = await fetchImages(queryParams.query);// робимо запит на наступну сторінку
         
         createMarkup(respNext.data.hits);//малюємо розмітку
+
+        if (queryParams.page === queryParams.maxPage) {
+
+            loadMoreBtn.classList.add("is-hidden");
+
+            messageFinishGallery.classList.remove("is-hidden");
+
+        } else {
+            loadMoreBtn.classList.remove("is-hidden");
+
+            const galleryCard = document.querySelector(".gallery-card").getBoundingClientRect();
+        
+            window.scrollBy(0, galleryCard.height * 2);
+        }
+
     } catch (err) {
         iziToast.error({
             message: "Oops, server connection error!",
@@ -126,20 +149,8 @@ async function handleLoadMore(event) {
                 });
     } finally {
         
-        loaderEl.style.display = "none";
-       
-        //  перевіряємо, якщо ми зараз знаходимось на останній сторінці - то ховаємо кнопку і додаємо повідомлення
-        if (queryParams.page === queryParams.maxPage) {
-            loadMoreBtn.classList.add("is-hidden");
-            loadMoreBtn.removeEventListener("click", handleLoadMore);
-            messageFinishGallery.classList.remove("is-hidden");
-            
-        } else {
-            loadMoreBtn.classList.remove("is-hidden");
-            const galleryCard = document.querySelector(".gallery-card").getBoundingClientRect();
-        window.scrollBy(0, galleryCard.height * 2);
-        }
-            
+        loaderEl.style.display = "none";        
+        
     }
      
 }
